@@ -4,12 +4,15 @@ import numpy as np
 import torch
 from PIL import Image
 from sanic import Sanic
+from sanic_auth import Auth, User
+from sanic import Sanic, response
+from sanic.response import text, json
 from sanic.exceptions import ServerError
 from sanic.log import logger
 from sanic.request import Request
 from sanic.response import HTTPResponse, html
 from torchvision import transforms
-app = Sanic(__name__)
+# app = Sanic(__name__)
 import torch
 import numpy as np
 import cv2
@@ -20,6 +23,129 @@ import numpy as np
 import base64
 from sanic.blueprints import Blueprint
 from sanic.response import html, HTTPResponse
+import sqlite3
+app = Sanic(__name__)
+app.config.AUTH_LOGIN_ENDPOINT = 'login'
+app.static('/img/720.jpg', './img/720.jpg')
+bp = Blueprint('bp')
+# bp.static('/bg-image.jpeg', './loginhtml/bg-image.jpeg')
+# app.static('/styles.css', './loginhtml/styles.css')
+auth = Auth(app)
+# session字典
+session = {}
+
+# # 存入session
+@app.middleware('request')
+async def add_session(request):
+    request.ctx.session = session
+
+# auth = Auth(app)
+def get_database_conn():
+    conn = sqlite3.connect('20230510.db')
+    return conn
+
+def update_db(username,password):
+    conn = get_database_conn()
+    cursor = conn.cursor()
+    sql = "UPDATE user SET password = '{}' WHERE username='{}'".format(password,username)
+    # sql=sql.strip()
+    print(sql)
+    cursor.execute(sql)
+    # # 关闭Cursor:
+    cursor.close()
+    # 提交事务:
+    conn.commit()
+    # 关闭Connection:
+    conn.close()
+
+
+def check_user_db(username,password):
+    conn = get_database_conn()
+    cursor = conn.cursor()
+    # type_, nickname_ = get_type_and_nickname()
+    sql = "SELECT * FROM user WHERE username='{}' and password='{}'".format(username,password)
+    print(sql)
+    cursor.execute(sql)
+    values = cursor.fetchall()
+        # # 关闭Cursor:
+    cursor.close()
+    # 提交事务:
+    conn.commit()
+    # 关闭Connection:
+    conn.close()
+    if len(values)<1:
+        return 0
+    else:
+        if values[0][3]=="1":
+            return 2
+        else:
+            return 1
+
+# db = pymysql.connect(host='localhost',
+#                      user='username',
+#                      passwd='password',
+#                      database='database_name',
+#                      charset="utf8")
+
+
+
+# 定义登录函数
+@app.route('/login', methods=['GET', 'POST'])
+async def login(request):
+    message = ''
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        cheret = check_user_db(username,password)
+        if cheret!=0:
+            user = User(id=cheret, name=username)
+            auth.login_user(request, user)
+            return response.redirect('/index')
+        else:
+            return text('帐号或密码错误')
+
+    elif request.method == 'GET':
+        return await response.file('./login.html')
+
+
+@app.route('/', methods=['GET', 'POST'])
+async def logint(request):
+    return await response.file('./login.html')
+
+# 调用内置的登出函数，清除session
+@app.route('/logout')
+@auth.login_required
+async def logout(request):
+    auth.logout_user(request)
+    return response.redirect('/login')
+
+
+@app.route('/profile')
+@auth.login_required(user_keyword='user')
+async def profile(request, user):
+    return response.json({'user': user})
+
+@app.route('/changepsw', methods=['GET', 'POST'])
+@auth.login_required(user_keyword='user')
+async def changepwd(request, user):
+    # return response.json({'user': user})
+    if user[0]!=2:
+        print("非管理员不能修改密码")
+        return response.redirect('/index')
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        cheret = update_db(username,password)
+        return response.redirect('/index')
+        # if cheret!=0:
+        #     # user = User(id=cheret, name=username)
+        #     # auth.login_user(request, user)
+        #     return response.redirect('/index')
+        # else:
+        #     return text('未找到该用户')
+
+    elif request.method == 'GET':
+        return await response.file('./changepasswd.html')
 # 加载YOLOv5模型
 # weights_url = 'https://github.com/ultralytics/yolov5/releases/download/v5.0/yolov5s.pt'
 # model = torch.hub.load_state_dict_from_url(weights_url, map_location=torch.device('cpu'))['model'].float()
@@ -72,11 +198,12 @@ def detect_objects(image):
 # # app.static('/js', './htmlstatic/js')
 # # app.static('/', './htmlstatic/')
 # app.static('/index', './htmlstatic/index.html')
-app.static('/img/720.jpg', './img/720.jpg')
+
 # 
 
-@app.route('/', methods=['GET'])
-async def index(request: Request) -> HTTPResponse:
+@app.route('/index', methods=['GET'])
+@auth.login_required(user_keyword='user')
+async def index(request: Request, user) -> HTTPResponse:
     """显示首页"""
     return html('''<html>
     <style>
@@ -104,6 +231,7 @@ async def index(request: Request) -> HTTPResponse:
 }
 /*a  upload */
 .a-upload {
+    text-decoration:none;
         font-family: SimHei;
     font-size: 30px;
     padding: 4px 10px;
@@ -171,11 +299,16 @@ async def index(request: Request) -> HTTPResponse:
         YOLO 人脸检测系统
         </div>
 
-<br><br><br>
-    <form action="/yolo" method="post" enctype="multipart/form-data">
+<br><br><br><br><br>
 
 
+<div style="text-align:left;width:100%">
+<div style="margin:0 auto;width:40%">
+    <form id="tupianjiance" action="/yolo" method="post" enctype="multipart/form-data">
+
+<label style="font-family: SimHei;font-size: 30px;color: #888;" for="filed">图片检测:</label>  
     <a href="javascript:;" class="a-upload">
+    
     <input id="filed" type="file" name="file" accept="image/*" >选择文件
     </a>
 
@@ -184,7 +317,28 @@ async def index(request: Request) -> HTTPResponse:
     </a>
     </form>
 
+<br><br><br>
+
+
+
+    <form id="mimaxiugai" method="get" action="/changepsw">
+    <label style="font-family: SimHei;font-size: 30px;color: #888;" for="submit">账户管理:</label>  
+            <a href="javascript:;" class="a-upload">
+            <input type="submit" value="修改密码">修改密码
+            </a>
+</div>
+</div>
     </div>
+
+
+
+
+    <form method="get" action="/logout">
+            <a href="javascript:;" class="a-upload">
+    <input type="submit" value="退出">退出
+    </a>
+</form>
+
 
 
 
@@ -194,7 +348,8 @@ async def index(request: Request) -> HTTPResponse:
     ''')
 
 @app.route('/yolo', methods=['POST'])
-async def upload_file(request: Request) -> HTTPResponse:
+@auth.login_required(user_keyword='user')
+async def upload_file(request: Request, user) -> HTTPResponse:
     """处理上传文件"""
     try:
         # 获取上传的图片文件
@@ -263,6 +418,7 @@ async def upload_file(request: Request) -> HTTPResponse:
 <style>
 /*a  upload */
 .a-upload {
+    text-decoration:none;
     font-family: SimHei;
     font-size: 30px;
     padding: 4px 10px;
@@ -359,14 +515,21 @@ async def upload_file(request: Request) -> HTTPResponse:
         retstr =ret111+ retbase+'''            
            
         
-        
-        <form method="get" action="/">
+
+        <form method="get" action="/index">
             <a href="javascript:;" class="a-upload">
     <input type="submit" value="返回">返回
     </a>
 </form>
 
+
+
 </div>
+        <form method="get" action="/logout">
+            <a href="javascript:;" class="a-upload">
+    <input type="submit" value="退出">退出
+    </a>
+</form>
 </body></html>'''
         # 返回HTML响应
         return HTTPResponse(
