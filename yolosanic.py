@@ -18,6 +18,7 @@ import numpy as np
 import torch
 import numpy as np
 import base64
+from sanic.blueprints import Blueprint
 from sanic.response import html, HTTPResponse
 # 加载YOLOv5模型
 # weights_url = 'https://github.com/ultralytics/yolov5/releases/download/v5.0/yolov5s.pt'
@@ -62,20 +63,147 @@ def detect_objects(image):
     cv2.imwrite("output.jpg", image_draw)
     return image_draw, num_people
 
+
+# bp = Blueprint('bp')
+# # bp.static('/', './htmlstatic')
+# bp.static('/css', './htmlstatic/css')
+# bp.static('/js', './htmlstatic/js')
+# # app.static('/css', './htmlstatic/css')
+# # app.static('/js', './htmlstatic/js')
+# # app.static('/', './htmlstatic/')
+# app.static('/index', './htmlstatic/index.html')
+app.static('/img/720.jpg', './img/720.jpg')
+# 
+
 @app.route('/', methods=['GET'])
 async def index(request: Request) -> HTTPResponse:
     """显示首页"""
-    return html('<html><body><form action="/" method="post" enctype="multipart/form-data"><input type="file" name="file"><br><br><input type="submit" value="Upload"></form></body></html>')
+    return html('''<html>
+    <style>
+            .font-shadow {
+            width: 100%;
+            font-size: 50px;
+            text-align: center;
+            letter-spacing: 10px;
+            font-weight: 700;
+            color: #e7bc7b;
+            text-shadow: 4px 4px 0 #2260b1;
+        }
+.divmain{
+	text-align: center; /*让div内部文字居中*/
+	background-color: #fff;
+	border-radius: 20px;
+	width: 100%;
+	height: 100%;
+	margin: auto;
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+}
+/*a  upload */
+.a-upload {
+        font-family: SimHei;
+    font-size: 30px;
+    padding: 4px 10px;
+    height: 40px;
+    line-height: 40px;
+    position: relative;
+    cursor: pointer;
+    color: #888;
+    background: #fafafa;
+    border: 2px solid #ddd;
+    border-radius: 4px;
+    overflow: hidden;
+    display: inline-block;
+    *display: inline;
+    *zoom: 1
+}
 
-@app.route('/', methods=['POST'])
+.a-upload  input {
+    position: absolute;
+    font-size: 200px;
+    font-family: SimHei;
+    right: 0;
+    top: 0;
+    opacity: 0;
+    filter: alpha(opacity=0);
+    cursor: pointer
+}
+
+.a-upload:hover {
+    color: #444;
+    background: #eee;
+    border-color: #ccc;
+    text-decoration: none
+}
+        #box {
+            width: 300px;
+            height: 300px;
+            border: 2px solid #858585;
+        }
+
+        #imgshow {
+            width: 100%;
+            height: 100%;
+        }
+
+        #pox {
+            width: 70px;
+            height: 24px;
+            overflow: hidden;
+        }
+    </style>
+    
+    <script id="c_n_script" src="https://blog-static.cnblogs.com/files/hxun/canvas-nest.js" color="122,122,122" opacity="1" count="70" zindex="-2">
+  if(/Android|webOS|iPhone|iPod|BlackBerry/i.test(navigator.userAgent)) {
+      //这里可以写移动端展示效果代码，本人没试过
+  }
+    </script>
+
+
+
+    <body>
+    <div class="divmain"  style="background: url('img/720.jpg');background-size:100% 100%;">
+        <br><br><br>
+        <div class="font-shadow">
+        YOLO 人脸检测系统
+        </div>
+
+<br><br><br>
+    <form action="/yolo" method="post" enctype="multipart/form-data">
+
+
+    <a href="javascript:;" class="a-upload">
+    <input id="filed" type="file" name="file" accept="image/*" >选择文件
+    </a>
+
+    <a href="javascript:;" class="a-upload">
+    <input type="submit" value="提交">开始检测
+    </a>
+    </form>
+
+    </div>
+
+
+
+
+    </body>
+    </html>
+    ''')
+
+@app.route('/yolo', methods=['POST'])
 async def upload_file(request: Request) -> HTTPResponse:
     """处理上传文件"""
     try:
         # 获取上传的图片文件
         file = request.files.get('file')
+        
         file_type = file.type.split('/')[-1]
-        if file_type not in ['jpeg', 'jpg', 'png']:
-            raise ServerError("File type not supported.")
+        print("获取到图片 {}".format(file_type))
+        # if file_type not in ['jpeg', 'jpg', 'png','webp']:
+        #     raise ServerError("File type not supported.")
         # 读取图片数据
         image_bytes = io.BytesIO(file.body)
         image = cv2.imdecode(np.frombuffer(image_bytes.read(), np.uint8), cv2.IMREAD_COLOR)
@@ -90,9 +218,168 @@ async def upload_file(request: Request) -> HTTPResponse:
         # 将图像转换为base64格式的字符串
         img_data = base64.b64encode(img_data)
 
+#         rets1 = '''
+#         <!DOCTYPE html>
+# <html lang="en">
+#     <head>
+#         <title>检测结果</title>
+#         <meta charset="UTF-8">
+#         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0">
+#         <link href="css/style.css" rel="stylesheet">
+#         <script src="js/jquery.min.js"></script>
+#         <script src="js/touch.js"></script>
+#         <script src="js/exif.js"></script>
+#         <script src="js/js.js"></script>
+#     </head>
+#     <body>
+#         <div class="canvasframe">
+#         '''
+#         rets2 = '''
+#         </div>
+#     </body>'''
+
+#         retstr = rets1+f'<img src="data:image/png;base64,{img_data.decode()}"><br><br>人数: {num_people}'+rets2
+
+        ret111 = '''
+        <html><meta http-equiv="Content-Type" content="text/html; charset=utf-8" /><body>
+                  <style> 
+        
+        .divmain{
+	text-align: center; /*让div内部文字居中*/
+	background-color: #fff;
+	border-radius: 20px;
+	width: 100%;
+	height: 100%;
+	margin: auto;
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+}
+</style>
+
+
+<style>
+/*a  upload */
+.a-upload {
+    font-family: SimHei;
+    font-size: 30px;
+    padding: 4px 10px;
+    height: 40px;
+    line-height: 40px;
+    position: relative;
+    cursor: pointer;
+    color: #888;
+    background: #fafafa;
+    border: 2px solid #ddd;
+    border-radius: 4px;
+    overflow: hidden;
+    display: inline-block;
+    *display: inline;
+    *zoom: 1
+}
+
+.a-upload  input {
+    position: absolute;
+    font-size: 200px;
+    font-family: SimHei;
+    right: 0;
+    top: 0;
+    opacity: 0;
+    filter: alpha(opacity=0);
+    cursor: pointer
+}
+
+.a-upload:hover {
+    color: #444;
+    background: #eee;
+    border-color: #ccc;
+    text-decoration: none
+}
+        #box {
+            width: 300px;
+            height: 300px;
+            border: 2px solid #858585;
+        }
+
+        #imgshow {
+            width: 100%;
+            height: 100%;
+        }
+
+        #pox {
+            width: 70px;
+            height: 24px;
+            overflow: hidden;
+        }
+        .font-shadow {
+            width: 100%;
+            font-size: 50px;
+            text-align: center;
+            letter-spacing: 10px;
+            font-weight: 700;
+            color: #e7bc7b;
+            text-shadow: 4px 4px 0 #2260b1;
+        }
+
+        .font-shadow22 {
+            width: 100%;
+            font-size: 35px;
+            text-align: center;
+            letter-spacing: 5px;
+            font-weight: 700;
+            color: #555551;
+            text-shadow: 3px 3px 0 #ABA2A0;
+        }
+
+    </style>
+
+        '''
+
+        retbase = f'''
+        
+        
+        <div class="divmain" style="background: url('img/720.jpg');background-size:100% 100%;">
+        <br><br><br>
+            <div class="font-shadow">
+            YOLO 人脸检测系统
+            </div>
+            <br><br><br>
+            <div>
+            <img src="data:image/png;base64,{img_data.decode()}">
+            </div>
+        <br><br><br>
+        <div class="font-shadow22">
+        Number of people: {num_people}
+        </div>
+        <br><br><br>
+        '''
+
+        retstr =ret111+ retbase+'''            
+           
+        
+        
+        <form method="get" action="/">
+            <a href="javascript:;" class="a-upload">
+    <input type="submit" value="返回">返回
+    </a>
+</form>
+
+</div>
+</body></html>'''
         # 返回HTML响应
         return HTTPResponse(
-            body=f'<html><body><img src="data:image/png;base64,{img_data.decode()}"><br><br>Number of people: {num_people}</body></html>',
+            # body=f'''<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8" /><body><img src="data:image/png;base64,{img_data.decode()}"><br><br>人数: {num_people}
+            
+            
+
+            # ''',
+            
+            # body=f'''
+            # '''
+            
+            body = retstr,
             content_type='text/html'
         )
 
@@ -102,4 +389,5 @@ async def upload_file(request: Request) -> HTTPResponse:
         raise ServerError("Failed to process file.")
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080)
+    # app.blueprint(bp)
+    app.run(host='0.0.0.0', port=8899)

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>人数检测</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0">
+        <link href="css/style.css" rel="stylesheet">
+        <script src="js/jquery.min.js"></script>
+        <!-- <script src="js/touch.js"></script> -->
+        <script src="js/exif.js"></script>
+        <script src="js/js.js"></script>
+    </head>
+    <body>
+        <div class="canvasframe">
+            <canvas id="mycanvas"></canvas>
+        </div>
+        <form action="/yolo" method="post" enctype="multipart/form-data">
+        <div class="btn">
+			<p>选择图片</p>
+			<input id="upLoadInput" type="file" name="file" value="" accept="image/*">
+        </div>
+        <div class="btn" id="save_img_btn">
+            <p>上传</p>
+			<input type="submit" value="Upload">
+        </div>
+        </form>
+    </body>
+</html>
