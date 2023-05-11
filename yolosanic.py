@@ -58,6 +58,21 @@ def update_db(username,password):
     # 关闭Connection:
     conn.close()
 
+def insert_db(username,password):
+    conn = get_database_conn()
+    cursor = conn.cursor()
+    # sql = "UPDATE user SET password = '{}' WHERE username='{}'".format(password,username)
+    sql = "INSERT INTO user(username, password) VALUES ('{}', '{}')".format(username,password)
+    # sql=sql.strip()
+    print(sql)
+    cursor.execute(sql)
+    # # 关闭Cursor:
+    cursor.close()
+    # 提交事务:
+    conn.commit()
+    # 关闭Connection:
+    conn.close()
+
 
 def check_user_db(username,password):
     conn = get_database_conn()
@@ -107,6 +122,20 @@ async def login(request):
     elif request.method == 'GET':
         return await response.file('./login.html')
 
+# 定义登录函数
+@app.route('/register', methods=['GET', 'POST'])
+async def register(request):
+    message = ''
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        cheret = insert_db(username,password)
+        # user = User(id=cheret, name=username)
+        # auth.login_user(request, user)
+        return response.redirect('/index')
+
+    elif request.method == 'GET':
+        return await response.file('./register.html')
 
 @app.route('/', methods=['GET', 'POST'])
 async def logint(request):
@@ -326,6 +355,7 @@ async def index(request: Request, user) -> HTTPResponse:
             <a href="javascript:;" class="a-upload">
             <input type="submit" value="修改密码">修改密码
             </a>
+    </form>
 </div>
 </div>
     </div>
